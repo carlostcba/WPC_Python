@@ -9,7 +9,7 @@
 - Lectura de tarjetas de proximidad y códigos de barras
 - Gestión de tickets de estacionamiento
 - Integración con cámaras GeoVision
-- Base de datos MySQL para registro de movimientos
+- Base de datos SQL Server para registro de movimientos
 - Comunicación con placas controladoras ST1660, VME100, Cash Park
 
 ### 10. CONFIGURACIÓN HIKVISION RECOMENDADA
@@ -101,6 +101,170 @@ class ModernCameraIntegration:
         return False
 ```
 
+### 11. ESQUEMA DE BASE DE DATOS SQL SERVER
+
+#### 11.1 Tablas Principales Identificadas
+```sql
+-- Tabla de Movimientos
+CREATE TABLE mvt (
+    MovimientoID BIGINT PRIMARY KEY,
+    ModuloID INT NOT NULL,
+    IdentificacionID BIGINT NOT NULL,
+    FechaHora DATETIME NOT NULL
+);
+
+-- Tabla de Tickets Activos
+CREATE TABLE tck (
+    TicketID BIGINT PRIMARY KEY,
+    Numero BIGINT NOT NULL,
+    FechaHoraIngreso DATETIME NOT NULL,
+    ModuloIngresoID INT NOT NULL,
+    validado BIT DEFAULT 0
+);
+
+-- Tabla de Historial de Tickets
+CREATE TABLE tckhst (
+    TicketID BIGINT PRIMARY KEY,
+    Numero BIGINT NOT NULL,
+    FechaHoraIngreso DATETIME NOT NULL,
+    ModuloIngresoID INT NOT NULL,
+    FechaHoraSalida DATETIME NOT NULL,
+    ModuloSalidaID INT NOT NULL
+);
+
+-- Tabla de Personas
+CREATE TABLE per (
+    PersonaID BIGINT PRIMARY KEY,
+    Apellido NVARCHAR(100),
+    Nombre NVARCHAR(100),
+    Sexo NCHAR(1),
+    FechaNacimiento DATE,
+    Pais NVARCHAR(50),
+    CreationDate DATETIME,
+    CREATEdByID INT,
+    LastUpdateDate DATETIME,
+    LastUpdateDateByID INT,
+    FechaInicio DATETIME,
+    FechaFin DATETIME
+);
+
+-- Tabla de Identificaciones
+CREATE TABLE idn (
+    IdentificacionID BIGINT PRIMARY KEY,
+    Numero NVARCHAR(20) NOT NULL
+);
+
+-- Tabla de Módulos
+CREATE TABLE mdl (
+    ModuloID INT PRIMARY KEY,
+    Address INT NOT NULL,
+    Nombre NVARCHAR(100),
+    GrupoModulos INT,
+    OrdenEncuesta INT,
+    ModuloEntradaID INT,
+    ModuloSalidaID INT,
+    duracion_pulso INT DEFAULT 0,
+    ValidacionTicket BIT DEFAULT 0
+);
+```
+
+#### 11.2 Modelos SQLAlchemy para Python
+```python
+from sqlalchemy import Column, Integer, BigInteger, String, DateTime, Boolean, ForeignKey
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import relationship
+from datetime import datetime
+
+Base = declarative_base()
+
+class Movement(Base):
+    __tablename__ = 'mvt'
+    
+    MovimientoID = Column(BigInteger, primary_key=True)
+    ModuloID = Column(Integer, nullable=False)
+    IdentificacionID = Column(BigInteger, nullable=False)
+    FechaHora = Column(DateTime, nullable=False, default=datetime.now)
+    
+class Ticket(Base):
+    __tablename__ = 'tck'
+    
+    TicketID = Column(BigInteger, primary_key=True)
+    Numero = Column(BigInteger, nullable=False)
+    FechaHoraIngreso = Column(DateTime, nullable=False)
+    ModuloIngresoID = Column(Integer, nullable=False)
+    validado = Column(Boolean, default=False)
+    
+class TicketHistory(Base):
+    __tablename__ = 'tckhst'
+    
+    TicketID = Column(BigInteger, primary_key=True)
+    Numero = Column(BigInteger, nullable=False)
+    FechaHoraIngreso = Column(DateTime, nullable=False)
+    ModuloIngresoID = Column(Integer, nullable=False)
+    FechaHoraSalida = Column(DateTime, nullable=False)
+    ModuloSalidaID = Column(Integer, nullable=False)
+
+class Person(Base):
+    __tablename__ = 'per'
+    
+    PersonaID = Column(BigInteger, primary_key=True)
+    Apellido = Column(String(100))
+    Nombre = Column(String(100))
+    Sexo = Column(String(1))
+    FechaNacimiento = Column(DateTime)
+    FechaInicio = Column(DateTime)
+    FechaFin = Column(DateTime)
+    CreationDate = Column(DateTime, default=datetime.now)
+
+class Identification(Base):
+    __tablename__ = 'idn'
+    
+    IdentificacionID = Column(BigInteger, primary_key=True)
+    Numero = Column(String(20), nullable=False)
+
+class Module(Base):
+    __tablename__ = 'mdl'
+    
+    ModuloID = Column(Integer, primary_key=True)
+    Address = Column(Integer, nullable=False)
+    Nombre = Column(String(100))
+    GrupoModulos = Column(Integer)
+    OrdenEncuesta = Column(Integer)
+    ModuloEntradaID = Column(Integer)
+    ModuloSalidaID = Column(Integer)
+    duracion_pulso = Column(Integer, default=0)
+    ValidacionTicket = Column(Boolean, default=False)
+```
+
+#### 11.3 Gestión de IDs Únicos
+El sistema VB6 usa una función personalizada para generar IDs:
+```python
+from datetime import datetime
+import time
+
+class IDGenerator:
+    @staticmethod
+    def generate_movement_id() -> int:
+        """
+        Equivalente a new_id_mvt en VB6
+        Genera ID basado en días desde 2007/06/01 + milisegundos del día
+        """
+        base_date = datetime(2007, 6, 1)
+        current_date = datetime.now()
+        
+        days_diff = (current_date.date() - base_date.date()).days
+        
+        # Milisegundos del día actual
+        milliseconds_today = (
+            current_date.hour * 3600000 +
+            current_date.minute * 60000 +
+            current_date.second * 1000 +
+            current_date.microsecond // 1000
+        )
+        
+        return days_diff * 100000000 + milliseconds_today
+```
+
 ---
 
 ### 2. ARQUITECTURA DEL SISTEMA
@@ -113,7 +277,7 @@ class ModernCameraIntegration:
 ├─────────────────────────────────────────────────────────┤
 │                 Comunicación Serie RS485                │
 ├─────────────────────────────────────────────────────────┤
-│              Base de Datos MySQL/SQL Server             │
+│              Base de Datos Microsoft SQL Server         │
 ├─────────────────────────────────────────────────────────┤
 │                Hardware (Placas Controladoras)          │
 └─────────────────────────────────────────────────────────┘
@@ -189,10 +353,10 @@ class ImageDisplayWindow(QWidget):
 - Control de ciclo de vida de la aplicación
 
 **Dependencias:**
-- MainEntorno (configuración)
+- MainEntorno (configuración y conexión SQL Server)
 - WPCIni (parámetros de comunicación)
 - MPolling (encuestas a módulos)
-- GeoSVR (cámaras)
+- HikvisionSVR (cámaras)
 
 **Migración a Python:**
 ```python
@@ -457,7 +621,7 @@ wpc_python/
 ├── config/
 │   ├── __init__.py
 │   ├── settings.py          # Equivalent to INI files
-│   └── database.py          # DB configuration
+│   └── database.py          # SQL Server configuration
 ├── core/
 │   ├── __init__.py
 │   ├── communication/
@@ -500,12 +664,67 @@ import serial
 import serial.rs485
 ```
 
-#### 7.2 Base de Datos
+#### 7.2 Base de Datos SQL Server
 ```python
-# SQLAlchemy para ORM
-from sqlalchemy import create_engine, Column, Integer, String, DateTime
+# pyodbc para SQL Server (recomendado)
+import pyodbc
+
+# O SQLAlchemy con driver SQL Server
+from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+
+# Configuración de conexión
+class DatabaseConfig:
+    def __init__(self):
+        self.driver = '{ODBC Driver 17 for SQL Server}'
+        self.server = 'localhost\\SQLEXPRESS'
+        self.database = 'videoman'
+        self.trusted_connection = True  # Windows Authentication
+        
+    def get_connection_string(self):
+        if self.trusted_connection:
+            return (
+                f"Driver={self.driver};"
+                f"Server={self.server};"
+                f"Database={self.database};"
+                f"Trusted_Connection=yes;"
+            )
+        else:
+            return (
+                f"Driver={self.driver};"
+                f"Server={self.server};"
+                f"Database={self.database};"
+                f"UID={self.username};"
+                f"PWD={self.password};"
+            )
+            
+    def get_sqlalchemy_url(self):
+        return f"mssql+pyodbc:///?odbc_connect={self.get_connection_string()}"
+
+# Ejemplo de uso con SQLAlchemy
+class DatabaseManager:
+    def __init__(self, config: DatabaseConfig):
+        self.config = config
+        self.engine = create_engine(
+            config.get_sqlalchemy_url(),
+            echo=False,  # True para debug SQL
+            pool_pre_ping=True,  # Verificar conexiones
+            pool_recycle=3600   # Renovar conexiones cada hora
+        )
+        self.SessionLocal = sessionmaker(bind=self.engine)
+        
+    def get_session(self):
+        return self.SessionLocal()
+        
+    def test_connection(self) -> bool:
+        try:
+            with self.engine.connect() as conn:
+                result = conn.execute("SELECT 1")
+                return result.fetchone()[0] == 1
+        except Exception as e:
+            print(f"Database connection error: {e}")
+            return False
 ```
 
 #### 7.3 Interface Gráfica
@@ -564,9 +783,9 @@ class ModuleConfiguration:
 ### 9. PLAN DE MIGRACIÓN SUGERIDO
 
 #### Fase 1: Infraestructura Base
-1. Configuración y logging
-2. Modelos de base de datos
-3. Comunicación serie básica
+1. **Configuración y logging**
+2. **Modelos de base de datos SQL Server**
+3. **Comunicación serie básica**
 
 #### Fase 2: Lógica de Negocio
 1. Protocolo de comunicación
