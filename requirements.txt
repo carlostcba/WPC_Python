@@ -1,6 +1,9 @@
-# ===============================================
-# DEPENDENCIAS PROYECTO WPC PYTHON
-# ===============================================
+# ========================================
+# requirements.txt - DEPENDENCIAS ACTUALIZADAS
+# ========================================
+"""
+Dependencias actualizadas para incluir sistema de cámaras
+"""
 
 # Base de datos SQL Server
 pyodbc>=4.0.39
@@ -10,56 +13,68 @@ alembic>=1.12.1
 # Comunicación serie RS485
 pyserial>=3.5
 
-# Interfaz gráfica (elegir una)
+# Interface gráfica
 PyQt6>=6.6.0
-# PySide6>=6.6.0  # Alternativa a PyQt6
+# O alternativamente: PySide6>=6.6.0
 
-# Integración cámaras Hikvision
-requests>=2.31.0
-opencv-python>=4.8.1.78
-aiofiles
+# ✅ NUEVAS DEPENDENCIAS PARA CÁMARAS HIKVISION
+requests>=2.31.0                # API REST para Hikvision
+opencv-python>=4.8.1.78         # Procesamiento de imágenes y video
+numpy>=1.24.3                   # Operaciones matemáticas para OpenCV
+Pillow>=10.0.1                  # Manipulación adicional de imágenes
+aiofiles>=23.2.1                # Operaciones asíncronas con archivos
 
-# Procesamiento de imágenes
-Pillow>=10.1.0
-numpy>=1.24.0
-
-# Configuración y utilidades
+# Utilidades
 python-dotenv>=1.0.0
 loguru>=0.7.2
-
-# Comunicación asíncrona
-asyncio>=3.4.3
-
-# Fecha y hora
-python-dateutil>=2.8.2
-
-# Validación de datos
-pydantic>=2.5.0
 
 # Testing y desarrollo
 pytest>=7.4.3
 pytest-asyncio>=0.21.1
-pytest-cov>=4.1.0
-
-# Formateo y linting
 black>=23.11.0
-flake8>=6.1.0
-isort>=5.12.0
 
-# Documentación
-sphinx>=7.2.0
-sphinx-rtd-theme>=1.3.0
+# ========================================
+# .env.template - CONFIGURACIÓN EXTENDIDA
+# ========================================
+"""
+Plantilla de configuración extendida con variables de cámaras
+"""
 
-# Monitoreo y métricas
-psutil>=5.9.0
+# ========================================
+# CONFIGURACIÓN DE ENTORNO - .env
+# ========================================
 
-# Criptografía (para contraseñas de cámaras)
-cryptography>=41.0.0
+# Base de datos SQL Server
+DB_DRIVER=ODBC Driver 17 for SQL Server
+DB_SERVER=localhost\\SQLEXPRESS
+DB_DATABASE=videoman
+DB_TRUSTED_CONNECTION=yes
+DB_USERNAME=
+DB_PASSWORD=
 
-# Interfaz web (opcional para panel de administración)
-fastapi>=0.104.0
-uvicorn>=0.24.0
+# Comunicación serie
+SERIAL_PORT=COM1
+SERIAL_BAUDRATE=9600
+SERIAL_TIMEOUT=2.0
 
-# Exportación de datos
-openpyxl>=3.1.0
-pandas>=2.1.0
+# Logging
+LOG_LEVEL=INFO
+LOG_FILE=logs/wpc.log
+
+# ✅ CONFIGURACIÓN DE CÁMARAS HIKVISION
+CAMERA_DEFAULT_USER=admin
+CAMERA_DEFAULT_PASSWORD=
+CAMERA_TIMEOUT=10
+CAMERA_MAX_RETRIES=3
+CAMERA_QUALITY_PRESET=medium
+CAMERA_AUTO_CAPTURE=true
+CAMERA_RETENTION_DAYS=30
+CAMERA_AUTO_CLEANUP=true
+
+# Interfaz gráfica
+UI_THEME=dark
+UI_LANGUAGE=es
+
+# Desarrollo
+DEBUG_MODE=false
+POLLING_INTERVAL=1000
