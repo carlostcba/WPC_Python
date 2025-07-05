@@ -17,6 +17,7 @@ PyQt6>=6.6.0
 # Integración cámaras Hikvision
 requests>=2.31.0
 opencv-python>=4.8.1.78
+aiofiles
 
 # Procesamiento de imágenes
 Pillow>=10.1.0
