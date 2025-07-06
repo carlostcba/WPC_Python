@@ -6,6 +6,7 @@ Equivalente a FrmImg.frm en VB6
 import os
 from typing import Optional, Dict, Any
 from datetime import datetime
+from pathlib import Path
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QFrame, QSizePolicy, QScrollArea, QGroupBox, QGridLayout,
@@ -291,13 +292,19 @@ class WPCImageWindow(QWidget):
     # Señales
     window_closed = pyqtSignal(int)  # window_type
     
-    def __init__(self, window_type: int = 1, parent=None):
+    def __init__(self, window_type: int = 1, movement_id: Optional[int] = None,
+                 image_path: Optional[str] = None,
+                 camera_manager: Optional[HikvisionManager] = None,
+                 parent=None):
         super().__init__(parent)
-        
+
         self.window_type = window_type  # 1, 2, 3 como en VB6
         self.movement_manager = MovementManager()
         self.person_manager = PersonManager()
-        self.hikvision_manager = None
+        self.hikvision_manager = camera_manager
+        self.camera_manager = camera_manager
+        self.movement_id = movement_id
+        self.image_path = image_path
         
         # Loader de imágenes en hilo separado
         self.image_loader = ImageLoader()
@@ -314,6 +321,12 @@ class WPCImageWindow(QWidget):
         
         # Configurar comportamiento por tipo de ventana
         self.configure_window_behavior()
+
+        # Cargar información inicial si se proporcionó
+        if self.movement_id is not None:
+            self.show_movement_image(self.movement_id)
+        elif self.image_path:
+            self.load_image_from_path(self.image_path)
     
     def setup_ui(self):
         """Configurar interfaz de usuario"""
@@ -351,6 +364,11 @@ class WPCImageWindow(QWidget):
         self.status_label = QLabel("Listo")
         self.status_label.setStyleSheet("color: #666666; font-style: italic;")
         main_layout.addWidget(self.status_label)
+        
+        # Información adicional de la imagen (ruta, tamaño, etc.)
+        self.info_label = QLabel("")
+        self.info_label.setWordWrap(True)
+        main_layout.addWidget(self.info_label)
         
         # Botones de control
         buttons_layout = QHBoxLayout()
@@ -420,6 +438,7 @@ class WPCImageWindow(QWidget):
             movement_id: ID del movimiento a mostrar
         """
         try:
+            self.current_movement_id = movement_id
             self.status_label.setText("Cargando información del evento...")
             
             # Obtener información del movimiento
@@ -519,6 +538,54 @@ class WPCImageWindow(QWidget):
             log_error(e, "get_movement_image_path")
             return None
     
+    def display_image(self, pixmap: QPixmap, movement_info: Optional[dict] = None):
+        """Mostrar imagen en el widget principal"""
+        if movement_info is None:
+            movement_info = {}
+        self.image_widget.set_image(pixmap, movement_info)
+
+    def show_error(self, message: str):
+        """Mostrar mensaje de error en la interfaz"""
+        self.status_label.setText(message)
+        QMessageBox.warning(self, "Error", message)
+
+    def load_image_from_path(self, image_path: str):
+        """Cargar imagen desde una ruta específica"""
+        try:
+            file_path = Path(image_path)
+            if file_path.exists():
+                pixmap = QPixmap(str(file_path))
+                if not pixmap.isNull():
+                    self.display_image(pixmap)
+                    self.update_image_info(str(file_path))
+                else:
+                    self.show_error("Error cargando imagen")
+            else:
+                self.show_error("Archivo de imagen no encontrado")
+        except Exception as e:
+            log_error(e, f"load_image_from_path({image_path})")
+            self.show_error(f"Error: {str(e)}")
+
+    def update_image_info(self, image_path: str):
+        """Actualizar información de la imagen cargada"""
+        try:
+            file_path = Path(image_path)
+            file_size = file_path.stat().st_size / 1024
+            file_time = datetime.fromtimestamp(file_path.stat().st_mtime)
+
+            info_text = (
+                f"Archivo: {file_path.name}\n"
+                f"Tamaño: {file_size:.1f} KB\n"
+                f"Capturado: {file_time.strftime('%Y-%m-%d %H:%M:%S')}"
+            )
+
+            if self.movement_id:
+                info_text += f"\nMovimiento: {self.movement_id}"
+
+            self.info_label.setText(info_text)
+        except Exception as e:
+            log_error(e, f"update_image_info({image_path})")
+
     def capture_current_image(self):
         """Capturar imagen actual de cámara"""
         try:
@@ -604,21 +671,28 @@ class WPCImageWindow(QWidget):
         event.accept()
 
 # Función de conveniencia para crear ventanas de imagen
-def create_image_window(window_type: int = 1, movement_id: Optional[int] = None) -> WPCImageWindow:
+def create_image_window(window_type: int = 1,
+                        movement_id: Optional[int] = None,
+                        image_path: Optional[str] = None,
+                        camera_manager: Optional[HikvisionManager] = None) -> WPCImageWindow:
     """
     Crear ventana de imagen
     
     Args:
         window_type: Tipo de ventana (1=principal, 2=evento, 3=alerta)
         movement_id: ID del movimiento a mostrar (opcional)
+        image_path: Ruta de imagen a cargar directamente (opcional)
+        camera_manager: Gestor de cámaras a reutilizar (opcional)
         
     Returns:
         Instancia de WPCImageWindow
     """
-    window = WPCImageWindow(window_type)
-    
-    if movement_id is not None:
-        window.show_movement_image(movement_id)
+    window = WPCImageWindow(
+        window_type,
+        movement_id=movement_id,
+        image_path=image_path,
+        camera_manager=camera_manager,
+    )
     
     return window
 
