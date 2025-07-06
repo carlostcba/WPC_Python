@@ -3,8 +3,8 @@
 Generador de IDs únicos para el sistema WPC
 Reemplaza las funciones de generación de IDs de VB6
 """
-from datetime import datetime, date
-import time
+from datetime import datetime, date, timedelta, time as dt_time
+import time as pytime
 from typing import Dict, Any
 
 class IDGenerator:
@@ -62,7 +62,7 @@ class IDGenerator:
         Returns:
             int: ID único para persona
         """
-        return int(time.time() * 1000) % 1000000000  # Últimos 9 dígitos
+        return int(pytime.time() * 1000) % 1000000000  # Últimos 9 dígitos
     
     @classmethod
     def generate_identification_id(cls) -> int:
@@ -107,7 +107,7 @@ class IDGenerator:
                 'milliseconds': milliseconds,
                 'datetime': datetime.combine(
                     target_date, 
-                    time(hours, minutes, seconds, milliseconds * 1000)
+                    dt_time(hours, minutes, seconds, milliseconds * 1000)
                 )
             }
             
