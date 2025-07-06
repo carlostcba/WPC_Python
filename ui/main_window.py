@@ -26,6 +26,8 @@ from core.modules.module_types import ModuleState, BarrierState, SensorState
 from core.database.managers import MovementManager, TicketManager
 from config.settings import settings
 from utils.logger import log_system, log_error
+from camera_integration.hikvision_manager import HikvisionManager
+from ui.widgets import StatusLED
 
 class ModuleWidget(QFrame):
     """
@@ -336,11 +338,13 @@ class WPCMainWindow(QMainWindow):
     """
     
     def __init__(self, polling_manager: Optional[PollingManager] = None,
-                 module_manager: Optional[ModuleManager] = None):
+                 module_manager: Optional[ModuleManager] = None,
+                 camera_manager: Optional['HikvisionManager'] = None):
         super().__init__()
         
         self.polling_manager = polling_manager
-        self.module_manager = module_manager
+        self.module_manager = module_manager        
+        self.camera_manager = camera_manager
         self.movement_manager = MovementManager()
         self.ticket_manager = TicketManager()
         
@@ -354,6 +358,10 @@ class WPCMainWindow(QMainWindow):
         
         # Configurar conexiones con el sistema
         self.setup_connections()
+
+        # Panel de estado de cámaras si el manager está disponible
+        if self.camera_manager:
+            self.setup_camera_status_panel()
         
         # Timer principal (equivalente al timer de VB6)
         self.main_timer = QTimer()
@@ -375,6 +383,7 @@ class WPCMainWindow(QMainWindow):
         
         # Layout principal
         main_layout = QVBoxLayout(central_widget)
+        self.main_layout = main_layout
         
         # Splitter horizontal
         h_splitter = QSplitter(Qt.Orientation.Horizontal)
@@ -395,6 +404,8 @@ class WPCMainWindow(QMainWindow):
         """Crear panel de módulos"""
         panel = QGroupBox("Módulos del Sistema")
         layout = QVBoxLayout(panel)
+        # Guardar para añadir widgets opcionales (p.ej. cámaras)
+        self.info_layout = layout
         
         # Área scrolleable para módulos
         scroll_area = QScrollArea()
@@ -546,6 +557,9 @@ class WPCMainWindow(QMainWindow):
             
             # Actualizar estado de módulos
             self.update_modules_status()
+
+            # Actualizar estado de cámaras
+            self.update_camera_status()
             
         except Exception as e:
             log_error(e, "update_ui")
@@ -590,6 +604,106 @@ class WPCMainWindow(QMainWindow):
                     
         except Exception as e:
             log_error(e, "update_modules_status")
+
+    def setup_camera_status_panel(self):
+        """Configurar panel de estado de cámaras"""
+        try:
+            camera_group = QGroupBox("Estado de Cámaras")
+            camera_layout = QVBoxLayout()
+
+            # Estadísticas generales
+            self.camera_stats_label = QLabel("Inicializando...")
+            camera_layout.addWidget(self.camera_stats_label)
+
+            self.camera_leds = {}
+            for module_id in self.camera_manager.module_cameras.keys():
+                led_layout = QHBoxLayout()
+                led = StatusLED()
+                led.set_state('offline')
+                self.camera_leds[module_id] = led
+
+                label = QLabel(f"Módulo {module_id}")
+
+                led_layout.addWidget(led)
+                led_layout.addWidget(label)
+                led_layout.addStretch()
+
+                camera_layout.addLayout(led_layout)
+
+            camera_group.setLayout(camera_layout)
+
+            if hasattr(self, 'info_layout'):
+                self.info_layout.addWidget(camera_group)
+            elif hasattr(self, 'main_layout'):
+                self.main_layout.addWidget(camera_group)
+
+        except Exception as e:
+            log_error(e, "setup_camera_status_panel")
+
+    def update_camera_status(self):
+        """Actualizar estado visual de cámaras"""
+        try:
+            if not self.camera_manager:
+                return
+
+            stats = self.camera_manager.get_system_statistics()
+            stats_text = (
+                f"Dispositivos: {stats.get('online_devices', 0)}/"
+                f"{stats.get('total_devices', 0)} | "
+                f"Cámaras: {stats.get('configured_cameras', 0)}"
+            )
+            self.camera_stats_label.setText(stats_text)
+
+            for module_id, led in self.camera_leds.items():
+                camera_config = self.camera_manager.module_cameras.get(module_id)
+                if camera_config:
+                    device_status = self.camera_manager.get_device_status(
+                        camera_config.device_id
+                    )
+                    if device_status.get("status") == "online":
+                        led.set_state('online')
+                    else:
+                        led.set_state('error', blinking=True)
+                else:
+                    led.set_state('offline')
+
+        except Exception as e:
+            log_error(e, "update_camera_status")
+
+    def on_movement_detected_ui(self, movement_data: dict):
+        """Manejador UI para eventos de movimiento con imágenes"""
+        try:
+            if movement_data.get('image_path'):
+                self.show_movement_image(
+                    movement_data.get('movement_id'),
+                    movement_data['image_path']
+                )
+        except Exception as e:
+            log_error(e, "on_movement_detected_ui")
+
+    def show_movement_image(self, movement_id: int, image_path: str):
+        """Mostrar imagen de movimiento en ventana flotante"""
+        try:
+            from ui.image_window import create_image_window
+
+            image_window = create_image_window(
+                window_type=2,
+                movement_id=movement_id
+            )
+
+            if hasattr(image_window, 'image_loader'):
+                movement_info = {
+                    'movement_time': datetime.now(),
+                    'module_name': f'Módulo {movement_id}',
+                }
+                image_window.image_loader.load_image(movement_id, image_path, movement_info)
+
+            image_window.show()
+
+            QTimer.singleShot(10000, image_window.close)
+
+        except Exception as e:
+            log_error(e, f"show_movement_image(movement_id={movement_id})")
     
     # Slots para eventos
     async def on_movement_detected(self, identification: str, module_status: ModuleStatus, person=None):
