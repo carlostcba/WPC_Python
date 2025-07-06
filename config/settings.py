@@ -28,11 +28,11 @@ class WPCSettings:
     DB_SERVER = os.getenv("DB_SERVER", "localhost\\SQLEXPRESS") 
     DB_DATABASE = os.getenv("DB_DATABASE", "videoman")
     DB_TRUSTED_CONNECTION = os.getenv("DB_TRUSTED_CONNECTION", "yes").lower() == "yes"
-    DB_USERNAME = os.getenv("DB_USERNAME", "")
-    DB_PASSWORD = os.getenv("DB_PASSWORD", "")
+    DB_USERNAME = os.getenv("DB_USERNAME", "sa")
+    DB_PASSWORD = os.getenv("DB_PASSWORD", "LaSalle2599")
     
     # Comunicación serie RS485
-    SERIAL_PORT = os.getenv("SERIAL_PORT", "COM1")
+    SERIAL_PORT = os.getenv("SERIAL_PORT", "COM5")
     SERIAL_BAUDRATE = int(os.getenv("SERIAL_BAUDRATE", "9600"))
     SERIAL_TIMEOUT = float(os.getenv("SERIAL_TIMEOUT", "2.0"))
     SERIAL_RTS_CONTROL = True  # Para RS485

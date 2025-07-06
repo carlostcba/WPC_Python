@@ -28,8 +28,11 @@ class Movement(Base):
     
     # Campos principales
     MovimientoID = Column(BigInteger, primary_key=True, comment="ID único del movimiento")
-    ModuloID = Column(Integer, nullable=False, comment="ID del módulo donde ocurrió")
-    IdentificacionID = Column(Integer, nullable=False, comment="ID de la identificación usada")
+    ModuloID = Column(Integer, ForeignKey('mdl.ModuloID'), nullable=False,
+                      comment="ID del módulo donde ocurrió")
+    IdentificacionID = Column(Integer, ForeignKey('idn.IdentificacionID'),
+                             nullable=False,
+                             comment="ID de la identificación usada")
     FechaHora = Column(DateTime, nullable=True, default=func.now(), comment="Timestamp del evento")
     
     # Índices para optimización

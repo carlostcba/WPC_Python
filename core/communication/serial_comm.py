@@ -93,8 +93,9 @@ class SerialCommunication:
                 rs485_settings = serial.rs485.RS485Settings()
                 rs485_settings.rts_level_for_tx = True
                 rs485_settings.rts_level_for_rx = False
-                rs485_settings.delay_before_tx = self.config.rts_enable_delay / 1000.0
-                rs485_settings.delay_before_rx = self.config.rts_disable_delay / 1000.0
+                # Algunos drivers solo admiten None en delay_before_*.
+                rs485_settings.delay_before_tx = None
+                rs485_settings.delay_before_rx = None
                 self.serial_port.rs485_mode = rs485_settings
             
             # Abrir puerto
