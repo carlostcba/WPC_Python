@@ -702,7 +702,7 @@ class CommunicationDebugWindow(QDialog):
                 
                 modules_status = self.polling_manager.get_all_modules_status()
                 for address, status in modules_status.items():
-                    last_comm = status.last_communication_time or "Nunca"
+                    last_comm = status.last_communication or "Nunca"
                     if isinstance(last_comm, datetime):
                         last_comm = last_comm.strftime("%H:%M:%S")
                     
