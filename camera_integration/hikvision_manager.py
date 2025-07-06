@@ -22,6 +22,8 @@ from requests.auth import HTTPDigestAuth
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
+from sqlalchemy import text
+
 from config.settings import settings
 from config.database import db_manager
 from utils.logger import log_system, log_error, log_camera
@@ -143,7 +145,7 @@ class HikvisionManager:
                 ORDER BY Nombre
                 """
                 
-                result = session.execute(query)
+                result = session.execute(text(query))
                 config_data = {}
                 
                 for row in result:
@@ -185,7 +187,7 @@ class HikvisionManager:
                 WHERE mc.Camara IS NOT NULL AND mc.Camara != 'N'
                 """
                 
-                camera_result = session.execute(camera_mapping_query)
+                camera_result = session.execute(text(camera_mapping_query))
                 for row in camera_result:
                     if row.device_id and row.channel:
                         self.module_cameras[row.ModuloID] = CameraChannelConfig(
@@ -359,7 +361,10 @@ class HikvisionManager:
                 INSERT INTO movement_images (MovimientoID, ImagePath, CaptureDateTime)
                 VALUES (?, ?, ?)
                 """
-                session.execute(insert_query, (movement_id, filepath, datetime.now()))
+                session.execute(
+                    text(insert_query),
+                    (movement_id, filepath, datetime.now())
+                )
                 
         except Exception as e:
             # No es crítico si falla

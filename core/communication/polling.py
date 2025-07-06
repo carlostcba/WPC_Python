@@ -37,6 +37,7 @@ class ModuleStatus:
     # Control de comunicación
     retry_count: int = 0
     max_retries: int = 3
+    consecutive_errors: int = 0
     last_communication: Optional[datetime] = None
     last_command: str = ""
     
@@ -286,6 +287,7 @@ class PollingManager:
             # Respuesta válida, resetear contadores de error
             self.consecutive_errors = 0
             module_status.retry_count = 0
+            module_status.consecutive_errors = 0
             module_status.last_communication = datetime.now()
             module_status.state = ModuleState.ONLINE
             
@@ -445,6 +447,7 @@ class PollingManager:
             # Incrementar contadores de error
             module_status.retry_count += 1
             self.consecutive_errors += 1
+            module_status.consecutive_errors += 1
             
             log_communication("ERROR", module_status.address,
                             f"Error comunicación (intento {module_status.retry_count}): {error_msg}")
