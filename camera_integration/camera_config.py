@@ -8,6 +8,7 @@ from typing import Dict, List, Optional
 from pathlib import Path
 
 from config.settings import settings
+from utils.logger import log_error
 
 
 @dataclass

@@ -154,16 +154,6 @@ class WPCLogger:
         error_msg = f"Error en {context}: {str(error)}" if context else str(error)
         self._logger.error(error_msg, exc_info=True)
 
-    def log_camera(message: str, module_id: int = None, level: str = "INFO"):
-        """
-        Log específico para eventos de cámaras
-        """
-        prefix = f"CAMERA"
-        if module_id:
-            prefix += f"[M{module_id}]"
-    
-        log_system(f"{prefix}: {message}", level)    
-
 # Instancia global del logger
 wpc_logger = WPCLogger()
 
@@ -197,3 +187,14 @@ def log_error(error: Exception, context: str = ""):
     Función de conveniencia para logging de errores
     """
     wpc_logger.log_error(error, context)
+
+
+def log_camera(message: str, module_id: int = None, level: str = "INFO"):
+    """
+    Log específico para eventos de cámaras
+    """
+    prefix = f"CAMERA"
+    if module_id:
+        prefix += f"[M{module_id}]"
+    
+    log_system(f"{prefix}: {message}", level)
