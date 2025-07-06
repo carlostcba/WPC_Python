@@ -50,8 +50,9 @@ class DatabaseManager:
             # Configurar sessionmaker
             self.SessionLocal = sessionmaker(
                 bind=self.engine,
-                autocommit=False,
-                autoflush=False
+                autocommit=False,                
+                autoflush=False,
+                expire_on_commit=False  # Avoid expiring instances after commit
             )
             
             # Probar conexión
